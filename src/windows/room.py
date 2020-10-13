@@ -37,11 +37,18 @@ class Room(object):
         return _list
 
     def clear(self, window):
+        # 화면 초기화
         for item in self.get_all_widget(window):
             item.grid_forget()
             item.destroy()
 
     def leave_room(self, window, response):
+        """
+        - 방 나가기
+        :param window: target tkinter window
+        :param response: 시도 결과
+        :return: True if success else False
+        """
         if response['code'] == code.VALID:
             self.next['type'] = code.LEAVE_ROOM
             self.next['uname'] = self.uname
@@ -52,6 +59,12 @@ class Room(object):
             return False
 
     def start_game(self, window, response):
+        """
+        - 게임 시작
+        :param window: target tkinter window
+        :param response: 시도 결과
+        :return: True if success else False
+        """
         if response['code'] == code.VALID:
             self.next['type'] = code.PLAY
             self.next['uname'] = self.uname
@@ -63,12 +76,24 @@ class Room(object):
             return False
 
     def do_ready(self, response):
+        """
+        - 준비
+        :param window: target tkinter window
+        :param response: 시도 결과
+        :return: None
+        """
         if response['code'] == code.VALID:
             self.user = response['user_info']
         else:
             messagebox.showerror('오목 OMOK', '서버 통신 실패')
 
     def _load_user(self, window, response):
+        """
+        - 서버로부터 수신한 유저 정보를 바탕으로 유저 정보 화면을 렌더링
+        :param window: target tkinter window
+        :param response: 서버로부터 수신한 방에 따른 유저 정보
+        :return: None
+        """
         if response['code'] == code.VALID:
             self.user = response['user_info']
 
@@ -128,6 +153,11 @@ class Room(object):
             messagebox.showerror('오목 OMOK', '서버 통신 실패')
 
     def receiver(self, window):
+        """
+        - 독립 Thread에서 작동하며 서버로부터의 정보를 수신하여 렌더링 함수를 호출한다.
+        :param window: rendering target tkinter window
+        :return: None
+        """
         send(self.server, code.GET_USER_INFO, {'room_id': self.id, })
         while not self.stop_thread:
             response = getall(self.server)

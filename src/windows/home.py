@@ -25,13 +25,13 @@ class Home(object):
 
         response = get(self.server, code.LOGIN)
 
-        if response['type'] == code.LOGIN and response['code'] == code.VALID:
+        if response['type'] == code.LOGIN and response['code'] == code.VALID:   # 로그인 성공
             self.next['type'] = code.LOGIN
             self.next['uname'] = uname
             window.destroy()
         elif response['type'] != code.LOGIN:
             messagebox.showerror('오목 OMOK', '서버 통신 실패')
-        elif response['code'] != code.VALID:
+        elif response['code'] != code.VALID:    # 중복 사용자명 또는 사용 불가한 이름 있음
             messagebox.showerror('오목 OMOK', '다른 사용자 이름을 입력하세요')
 
     def __call__(self, window: tk.Tk):

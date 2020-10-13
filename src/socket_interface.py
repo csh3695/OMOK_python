@@ -8,6 +8,7 @@ rcv_queue = queue.Queue()
 
 
 def send(sock, type, data={}):
+    # send message after attaching type
     assert ('type' not in data.keys())
     data['type'] = type
     # print('SEND {}'.format(data))
@@ -15,6 +16,7 @@ def send(sock, type, data={}):
 
 
 def getall(conn):
+    # get all type message and implement queueing
     if rcv_queue.empty():
         dstr = conn.recv(2048).decode("utf-8")
         dlist = divide(dstr)
@@ -35,6 +37,7 @@ def getall(conn):
 
 
 def get(conn, type):
+    # get specific type message
     while True:
         # print("Waiting for Type {}".format(type))
         dstr = conn.recv(2048).decode("utf-8")
@@ -48,6 +51,11 @@ def get(conn, type):
 
 
 def board_to_str(board):
+    """
+    build string representation of board
+    :param board: board array
+    :return: board string
+    """
     blist = []
     wlist = []
     for i in range(len(board)):
@@ -65,6 +73,11 @@ def board_to_str(board):
 
 
 def str_to_board(bstr: str):
+    """
+    parse string and reconstruct board
+    :param bstr: board string
+    :return: board array
+    """
     try:
         bdic = literal_eval(bstr)
     except:
@@ -80,6 +93,11 @@ def str_to_board(bstr: str):
 
 
 def divide(dstr):
+    """
+    - 여러 dictionary들이 하나의 string으로 concat되어 있는 입력을 dictionary 단위로 나눔
+    :param dstr: dictionaries string
+    :return: list of dictionary string
+    """
     if len(dstr) == 0 or dstr[0] != '{':
         return []
     if dstr.find('{') == -1:

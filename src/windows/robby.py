@@ -30,14 +30,18 @@ class Robby(object):
         return _list
 
     def clear(self, window):
+        # 화면 초기화
         for item in self.get_all_widget(window):
             item.grid_forget()
             item.destroy()
 
-    def create_room(self, response):
-        return response['room']
-
     def enter_room(self, window, response):
+        """
+        - 방에 입장 시도
+        :param window: target tkinter window
+        :param response: target room info from server
+        :return: True if success
+        """
         room = response['room']
         if response['code'] != code.VALID:
             messagebox.showerror('오목 OMOK',
@@ -50,6 +54,12 @@ class Robby(object):
             return True
 
     def _load_room(self, window, response):
+        """
+        - 서버로부터 수신한 room_info로부터 방 버튼을 렌더링
+        :param window: target tkinter window
+        :param response: room info from server
+        :return: None
+        """
         self.room_info = response['room_info']
 
         if response['code'] == code.VALID:
@@ -75,6 +85,11 @@ class Robby(object):
             messagebox.showerror('오목 OMOK', '서버 통신 실패')
 
     def receiver(self, window):
+        """
+        - 독립 Thread에서 작동하며 서버로부터의 정보를 수신하여 렌더링 함수를 호출한다.
+        :param window: rendering target tkinter window
+        :return: None
+        """
         send(self.server, code.GET_ROOM_INFO, {})
         while not self.stop_thread:
             response = getall(self.server)

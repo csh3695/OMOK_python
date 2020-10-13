@@ -52,11 +52,17 @@ class Game(object):
         return _list
 
     def clear(self, window):
+        # 화면 초기화
         for item in self.get_all_widget(window):
             item.grid_forget()
             item.destroy()
 
     def _load_user(self, window):
+        """
+        - 사용자 정보 렌더링
+        :param window: target tkinter window
+        :return: None
+        """
         for uname in self.user.keys():
             if uname == self.uname:
                 item = tk.Label(window,
@@ -75,6 +81,12 @@ class Game(object):
                 item.grid(row=0, column=1, sticky='news')
 
     def put_stone(self, event):
+        """
+        - 돌 놓기 메시지를 서버에 전송
+        :param event: 마우스 클릭 좌표
+        :return: None
+        """
+
         # 57 ~= 625/11
         if self.next_turn == self.my_stone:
             send(self.server, code.PUT_STONE,
@@ -83,6 +95,13 @@ class Game(object):
             messagebox.showerror('오목 OMOK', '자네의 차례가 아니네. 경거망동하지 말게나.')
 
     def update_board(self, window, new_board):
+        """
+        - 서버로부터 수신한 board를 바탕으로 돌 그림을 그리기
+        :param window: target tkinter window
+        :param new_board: 서버로부터 수신한 새로운 board
+        :return: None
+        """
+
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
                 if self.board[i][j] != new_board[i][j]:
@@ -91,6 +110,13 @@ class Game(object):
                     self.board[i][j] = new_board[i][j]
 
     def parse_game_state(self, window, response):
+        """
+        - 서버에서 수신한 게임 정보를 파싱하여 클라이언트 스테이트 업데이트
+        :param window: target tkinter window
+        :param response: 서버로부터 수신한 게임 정보
+        :return: None
+        """
+
         assert (response['game_id'] == self.id)
         game_dict = response['game']
         self.user = response['user_info']
@@ -99,13 +125,16 @@ class Game(object):
         self.state = game_dict['state']
         self._load_user(window)
         self.update_board(window, str_to_board(game_dict['board']))
-        # self.turn_count = response['turn_count']
-        # self.wrong_place_count = response['wrong_place_count']
 
     def show_result(self, result_flag):
         self.canvas.create_image(312, 312, image=self.result_image[result_flag])
 
     def check_winner(self, window):
+        """
+        - 승자 결정 시 화면 렌더링
+        :param window: target tkinter window
+        :return: True if winner determined
+        """
         if self.state == code.ON_GAME:
             return False
         elif self.state == code.BLACK:
@@ -119,6 +148,11 @@ class Game(object):
         return True
 
     def receiver(self, window):
+        """
+        - 독립 Thread에서 작동하며 서버로부터의 정보를 수신하여 렌더링 함수를 호출한다.
+        :param window: rendering target tkinter window
+        :return: None
+        """
         send(self.server, code.GET_GAME_INFO, {'game_id': self.id})
         while not self.stop_thread:
             response = getall(self.server)

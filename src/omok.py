@@ -29,12 +29,22 @@ class Omok(object):
                 }
 
     def set_state_by_server(self, state):
-        self.state_by_server = state
+        self.state_by_server = state    # 서버에서 state overriding
 
     def set_timeout(self):
-        self.who_timeout = self.next_turn
+        self.who_timeout = self.next_turn   # 서버에서 Timeout Checking
 
     def state(self):
+        """
+        - 본 게임의 상태를 리턴한다.
+        - 우선순위
+            1. 서버 main에서 override한 결과(state_by_server)
+            2. 서버 main에서 check한 Timeout 결과에 따른 승패
+            3. wrong_place_count
+            4. turn >= 25
+            5. 돌 5개 발견에 따른 결과
+        :return: game state
+        """
         if self.state_by_server is not None:
             return self.state_by_server
         if self.who_timeout is not None:
@@ -52,6 +62,11 @@ class Omok(object):
             return result
 
     def put_stone(self, x, y, color):
+        """
+        :param x, y: spot coordinate
+        :param color: 놓을 돌의 색
+        :return: put 결과
+        """
         if self.board[x][y] == 0:
             self.board[x][y] = color
             if color != self.start:
@@ -66,8 +81,11 @@ class Omok(object):
         return (0 <= x < self.size) & (0 <= y < self.size)
 
     def check_end(self, board):
-        if self.turn_count >= 50:
-            return -1
+        """
+        - 오목 규칙에 맞게 보드를 보고 승패 확인
+        :param board: board array
+        :return: result
+        """
         for x in range(len(board)):
             for y in range(len(board[0])):
                 if board[x][y] == 0:

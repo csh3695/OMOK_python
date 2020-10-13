@@ -1,4 +1,6 @@
+
 def generate_matrix(ndim):
+    # build multi-dim 0-filled array
     if len(ndim) == 1:
         return [0] * ndim[0]
     else:
@@ -9,6 +11,7 @@ def generate_matrix(ndim):
 
 
 def get_shape(arr):
+    # get shape of input multi-dim array
     shape = []
     while type(arr) == list:
         shape.append(len(arr))

@@ -5,13 +5,14 @@ from src.omok import Omok
 from src.socket_interface import *
 from threading import Timer
 
-uname_list = ['admin', 'None']
-room_list = []
-user_by_room = {}
-game_by_room = {}
+uname_list = ['admin', 'None']  # user name list. admin and None not allowed for uname
+room_list = []  # room list
+user_by_room = {}   # user state dict(ready) by room
+game_by_room = {}   # game info by room
 
-listen_table = {}
+listen_table = {}   # clients' listening table - see report
 
+# update variables: notify sender threads to send updated info to clients
 uname_list_update = 0
 room_list_update = 0
 user_by_room_update = 0
@@ -26,15 +27,8 @@ threads = []
 room_info_thread, user_info_thread, game_info_thread = None, None, None
 
 
-def uname_lock(func):
-    def wrapper(*args, **kwargs):
-        global uname_list_update
-        func(*args, **kwargs)
-        uname_list_update += 1
-    return wrapper
-
-
 def room_lock(func):
+    # set room info update variable to 1
     def wrapper(*args, **kwargs):
         global room_list_update
         func(*args, **kwargs)
@@ -43,6 +37,7 @@ def room_lock(func):
 
 
 def user_lock(func):
+    # set user info update variable to 1
     def wrapper(*args, **kwargs):
         global user_by_room_update
         func(*args, **kwargs)
@@ -51,6 +46,7 @@ def user_lock(func):
 
 
 def game_lock(func):
+    # set game info update variable to 1
     def wrapper(*args, **kwargs):
         global game_by_room_update
         func(*args, **kwargs)
@@ -59,6 +55,7 @@ def game_lock(func):
 
 
 def update_room_info():
+    # work on sender thread
     global room_list_update
     while True:
         if room_list_update > 0:
@@ -69,6 +66,7 @@ def update_room_info():
 
 
 def update_user_info():
+    # work on sender thread
     global user_by_room_update
     while True:
         if user_by_room_update > 0:
@@ -81,6 +79,7 @@ def update_user_info():
 
 
 def update_game_info():
+    # work on sender thread
     global game_by_room_update
     while True:
         if game_by_room_update > 0:
@@ -124,18 +123,16 @@ def leave_room(rcv, client):
             send(client, code.LEAVE_ROOM, {'code': code.INVALID})
 
 
-@uname_lock
 def login(rcv, client):
     print("[+] LOGIN {}".format(rcv['uname']))
     if 'uname' not in rcv.keys() or rcv['uname'] in uname_list:
-        send(client, code.LOGIN, {'code': code.INVALID})
+        send(client, code.LOGIN, {'code': code.INVALID})    # invalid msg or uname
     else:
         uname_list.append(rcv['uname'])
         listen_table[client.getpeername()[1]]['room_list'] = True
         send(client, code.LOGIN, {'code': code.VALID, 'uname': rcv['uname']})
 
 
-@uname_lock
 @game_lock
 def logout(rcv, client):
     print("[+] LOGOUT {}".format(rcv['uname']))
@@ -143,6 +140,7 @@ def logout(rcv, client):
     listen_table.pop(client.getpeername()[1])
     clients.remove(client)
     if game is not None and game.to_dict()['state'] == code.ON_GAME:
+        # if user leaves when doing game
         game_dict = list(game_by_room.values())[0]
         if game_dict['black'] == uname:
             winner = code.WHITE
@@ -156,8 +154,10 @@ def logout(rcv, client):
             response.update(game_dict)
             send(c, code.PUT_GAME_INFO, response)
     if len(room_list) > 0 and uname in user_by_room[room_list[0]['id']].keys():
+        # delete user info about room
         leave_room({'room_id': room_list[0]['id'], 'uname': uname}, None)
     if uname in uname_list:
+        # delete uname
         uname_list.remove(uname)
     client.close()
     exit(0)
@@ -171,7 +171,7 @@ def create_room(rcv, client):
     room_list.append({'id': len(room_list), 'owner': uname, 'state': 'enter'})
     user_by_room[room_list[0]['id']] = {}
     print("[+] CREATE_ROOM {}".format(room_list))
-    send(client, code.CREATE_ROOM, {'room': room_list[-1], 'code': code.VALID})
+    send(client, code.CREATE_ROOM, {'room': room_list[-1], 'code': code.VALID}) # success
 
 
 @room_lock
@@ -180,14 +180,14 @@ def enter_room(rcv, client):
     uname = rcv['uname']
     if room_list[0]['state'] == 'enter':
         listen_table[client.getpeername()[1]]['user_by_room'] = True
-        send(client, code.ENTER_ROOM, {'code': code.VALID, 'room': room_list[0]})
+        send(client, code.ENTER_ROOM, {'code': code.VALID, 'room': room_list[0]})   # success
         user_by_room[room_list[0]['id']][uname] = False
         if len(user_by_room[room_list[0]['id']]) >= 2:
-            room_list[0]['state'] = 'full'
+            room_list[0]['state'] = 'full'  # set to full if 2 users entered
         print("[+] ENTER_ROOM {}".format(room_list))
         listen_table[client.getpeername()[1]]['room_list'] = False
     else:
-        send(client, code.ENTER_ROOM, {'code': code.INVALID, 'room': room_list[0]})
+        send(client, code.ENTER_ROOM, {'code': code.INVALID, 'room': room_list[0]}) # fail
 
 
 @room_lock
@@ -196,9 +196,9 @@ def get_user_info(rcv, client):
     id = rcv['room_id']
     if room_list[0]['id'] == id and (id in user_by_room.keys()):
         print("[+] GET_USER_INFO {}".format(user_by_room[id]))
-        send(client, code.PUT_USER_INFO, {'code': code.VALID, 'user_info': user_by_room[id]})
+        send(client, code.PUT_USER_INFO, {'code': code.VALID, 'user_info': user_by_room[id]})   # success
     else:
-        send(client, code.PUT_USER_INFO, {'code': code.INVALID, 'user_info': None})
+        send(client, code.PUT_USER_INFO, {'code': code.INVALID, 'user_info': None}) # fail
 
 
 @room_lock
@@ -209,9 +209,9 @@ def ready(rcv, client):
     if room_list[0]['id'] == id and (id in user_by_room.keys()):
         user_by_room[id][uname] = not user_by_room[id][uname]
         print("[+] READY {}".format(user_by_room[id]))
-        send(client, code.READY, {'code': code.VALID, 'user_info': user_by_room[id]})
+        send(client, code.READY, {'code': code.VALID, 'user_info': user_by_room[id]})   # success
     else:
-        send(client, code.READY, {'code': code.INVALID, 'user_info': None})
+        send(client, code.READY, {'code': code.INVALID, 'user_info': None}) # fail
 
 
 @user_lock
@@ -221,8 +221,8 @@ def play(rcv, client):
     id = rcv['room_id']
     uname = rcv['uname']
     if room_list[0]['id'] == id and (id in user_by_room.keys()):
-        listen_table[client.getpeername()[1]]['game_by_room'] = True
-        if room_list[0]['owner'] == uname:
+        listen_table[client.getpeername()[1]]['game_by_room'] = True    # now listening about game info
+        if room_list[0]['owner'] == uname:  # owner starts to create play info
             game = Omok(len(game_by_room))
             game_by_room[id] = {'id': len(game_by_room),
                                 'user_info': user_by_room[id],
@@ -230,7 +230,7 @@ def play(rcv, client):
                                 'game': game.to_dict()
                                 }
         else:
-            while id not in game_by_room.keys():
+            while id not in game_by_room.keys():    # participant ends creating play info(for sync)
                 pass
             for key in user_by_room[id]:
                 user_by_room[id][key] = False
@@ -246,12 +246,13 @@ def play(rcv, client):
         response = {'code': code.VALID, 'game_id': game_by_room[id]['id']}
         response.update(game_by_room[id])
         send(client, code.PLAY, response)
-        listen_table[client.getpeername()[1]]['user_by_room'] = False
+        listen_table[client.getpeername()[1]]['user_by_room'] = False   # stop listening about room or user
     else:
         send(client, code.PLAY, {'code': code.INVALID, 'game_id': None})
 
 @game_lock
 def set_timeout():
+    # timeout of certain user
     print('timer ended')
     global game
     game.set_timeout()
@@ -260,20 +261,20 @@ def set_timeout():
 
 @game_lock
 def get_game_info(rcv, client):
+    # set update variable to 1 only and sender thread automatically sends
     pass
 
 
 def end_game(rcv, client):
-    print('game_by_room', game_by_room)
     global game
     global timer
     listen_table[client.getpeername()[1]]['user_by_room'] = True
     id = rcv['room_id']
     uname = rcv['uname']
     game_dict = game_by_room[id]
-    if uname == game_dict['black']:
+    if uname == game_dict['black']: # black starts to destruct game info
         game_dict['black'] = None
-    elif uname == game_dict['white']:
+    elif uname == game_dict['white']:   # white ends destructing game info(for sync)
         game_dict['white'] = None
 
         while game_dict['black'] is not None:
@@ -300,8 +301,8 @@ def put_stone(rcv, client):
     stone = rcv['stone']
     game_dict = list(game_by_room.values())[0]
     assert(game_dict['id'] == id)
-    result = game.put_stone(rcv['x'], rcv['y'], stone)
-    game_dict['game'] = game.to_dict()
+    result = game.put_stone(rcv['x'], rcv['y'], stone)  # get result from game instance
+    game_dict['game'] = game.to_dict()  # update game dictionary
     send(client, code.PUT_STONE, {'game_id': game.id, 'stone': stone, 'result': result})
     if game_dict['game']['state'] == code.ON_GAME:
         if timer is None:
@@ -311,6 +312,8 @@ def put_stone(rcv, client):
 
 
 def process_query(client, rcv: dict):
+    # process received message(rcv)
+    # by their type
     if rcv['type'] == code.LOGIN:
         login(rcv, client)
 
@@ -351,6 +354,7 @@ def process_query(client, rcv: dict):
         end_game(rcv, client)
 
     elif rcv['type'] == code.DUMMY:
+        # to stop clients' receiver threads
         print('{} out.'.format(client.getpeername()[1]))
         send(client, code.DUMMY, {})
 
@@ -365,6 +369,7 @@ def conn_thread(client):
 
 
 def run(s):
+    # run sender threads
     room_info_thread = threading.Thread(target=update_room_info, args=())
     user_info_thread = threading.Thread(target=update_user_info, args=())
     game_info_thread = threading.Thread(target=update_game_info, args=())
@@ -379,7 +384,6 @@ def run(s):
         clients.append(client)
         print(client.getpeername())
         listen_table[client.getpeername()[1]] = {'room_list': False, 'user_by_room': False, 'game_by_room': False}
-        print(listen_table)
         threads.append(threading.Thread(target=conn_thread, args=(clients[-1],)))
         threads[-1].start()
 

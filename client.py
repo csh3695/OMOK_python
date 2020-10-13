@@ -17,6 +17,17 @@ def run(HOST, PORT):
     uname = None
 
     while True:
+        """
+        - windows/*의 class들로 생성된 window rendering 객체에 window를 넘겨 call한다.
+        - 해당 class들이 사용자에게 각 화면을 띄운 후 종료 또는 화면 변화 시 next_work를 반환한다.
+        - next_work
+            code.DESTROY -> 종료(* -> exit)
+            code.LOGIN -> 로그인하고 로비로 이동(home -> robby)
+            code.ENTER_ROOM -> 방에 입장(robby -> room)
+            code.LEAVE_ROOM -> 로비로 복귀(room -> robby)
+            code.PLAY -> 게임 시작(room -> game)
+            code.TO_ROOM -> 게임 후 방으로 복귀(game -> room)
+        """
         next_work = screen(window)
         print('next work is', next_work)
         if next_work['type'] == code.DESTROY:
