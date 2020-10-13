@@ -1,0 +1,6 @@
+*.mp4
+*.pdf
+*.docx
+*.pyc
+__pycache__/
+.idea
